@@ -6,7 +6,7 @@ class MantisOpenGraphPlugin extends MantisPlugin
 	function register()
 	{
 		$this->name = 'Open Graph Plugin';
-		$this->description = 'Open Graph meta information for MantisBT.';
+		$this->description = 'Open Graph and Twitter Card meta information for MantisBT.';
 		$this->version = '1.0';
 		$this->requires = array(
 			'MantisCore' => '1.2.0',
@@ -33,21 +33,47 @@ class MantisOpenGraphPlugin extends MantisPlugin
 		if('view.php' !== basename($_SERVER['PHP_SELF']))
 			return;
 
-		$bug_id = gpc_get_int('bug_id');
-		if(!bug_exists($bug_id) || !access_ensure_bug_level(VIEWER, $p_bug_id))
+		$bug_id = gpc_get_int('id');
+		if(!bug_exists($bug_id))// || !access_ensure_bug_level(VIEWER, $bug_id))
 			return;
 
 		$bug = bug_get($bug_id);
+		$i_title = 'Bug #'. $bug_id.': '.$bug->summary;
+		$i_description = trim(substr($bug->description, 0, 300));
+		$i_url = config_get('path').'view.php?id='.$bug_id;
+		$i_image_url = config_get('path').'images/og_logo.png';
 
-		$og_title = $bug->summary;
-		$og_description = $p_bug->description;
-		$og_update_time = date('c', $bug->last_updated);
+		$og = array(
+			'site_name' => config_get('from_name'),
+			'title' => $i_title,
+			'description' => $i_description,
+			'type' => 'article',
+			'updated_time' => date('c', $bug->last_updated),
+			'url' => $i_url,
+			'image' => $i_image_url,
+			'image:width' => '128',
+			'image:height' => '128'
+		);
+		$twitter = array(
+			'card' => 'summary',
+			'title' => $i_title,
+			'description' => $i_description,
+			'image:src' => $i_image_url,
+			'url' => $i_url,
+			'domain' => parse_url($i_url, PHP_URL_HOST),
+			'site' => '@VCMIOfficial'
+		);
 
-		return '
-			<meta property="og:title" content="'.$og_title.'">
-			<meta property="og:description" content="'.$p_bug->description.'">
-			<meta property="og:type" content="website">
-			<meta property="og:updated_time" content="'.$og_update_time.'">
-			';
+		$return = array();
+		foreach($og as $property => $content)
+		{
+			$return[] = '<meta property="og:'.$property.'" content="'.$content.'">';
+		}
+		foreach($twitter as $property => $content)
+		{
+			$return[] = '<meta name="twitter:'.$property.'" content="'.$content.'">';
+		}
+
+		return implode(PHP_EOL, $return);
 	}
 }
